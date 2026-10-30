@@ -173,6 +173,12 @@ public class PaymentService {
 		return PageResponse.of(paymentRepository.findByUserIdOrderByCreatedAtDescIdDesc(userId, pageable), mapper::toResponse);
 	}
 
+	@Transactional(readOnly = true)
+	public PageResponse<PaymentResponse> search(PaymentStatus status, int page, int size) {
+		var pageable = PageRequest.of(Math.max(page, 0), Math.clamp(size, 1, MAX_PAGE_SIZE));
+		return PageResponse.of(paymentRepository.search(status, pageable), mapper::toResponse);
+	}
+
 	/**
 	 * Chủ giao dịch, STAFF hoặc ADMIN được xem.
 	 */

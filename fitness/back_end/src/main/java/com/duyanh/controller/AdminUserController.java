@@ -81,8 +81,8 @@ public class AdminUserController {
 		return adminUserService.updateRoles(id, req.roles(), admin.getId());
 	}
 
-	@Operation(summary = "Danh sách hội viên kèm gói tập gần nhất (ADMIN, STAFF)")
-	@PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+	@Operation(summary = "Danh sách hội viên kèm gói tập gần nhất (ADMIN, STAFF; HLV dùng để chọn hội viên khi soạn kế hoạch)")
+	@PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'TRAINER')")
 	@GetMapping("/members")
 	public PageResponse<MemberSummaryResponse> listMembers(
 			@RequestParam(required = false) String keyword,

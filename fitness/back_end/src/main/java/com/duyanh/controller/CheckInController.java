@@ -1,5 +1,7 @@
 package com.duyanh.controller;
 
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -62,6 +64,13 @@ public class CheckInController {
 	@PostMapping("/{id}/check-out")
 	public CheckInResponse checkOut(@PathVariable Long id) {
 		return checkInService.checkOut(id);
+	}
+
+	@Operation(summary = "Lượt check-in hôm nay; openOnly=true chỉ người đang ở phòng tập (STAFF, ADMIN)")
+	@PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
+	@GetMapping("/today")
+	public List<CheckInResponse> today(@RequestParam(defaultValue = "false") boolean openOnly) {
+		return checkInService.listToday(openOnly);
 	}
 
 	@Operation(summary = "Lịch sử ra vào của tôi")

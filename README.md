@@ -5,6 +5,7 @@ check-in bằng QR, theo dõi kế hoạch tập và chỉ số cơ thể; quả
 quản lý tài khoản và tra cứu nhật ký thao tác.
 
 Backend: **Java 21 · Spring Boot 3.5 · Spring Security (JWT) · JPA/Hibernate · MySQL 8 · Redis**
+Frontend: **React 18 · Vite · React Router · Recharts**
 
 ## Cấu trúc thư mục
 
@@ -24,7 +25,12 @@ Fitness/
 │   │       ├── event/       # Sự kiện nghiệp vụ -> thông báo
 │   │       ├── scheduler/   # Job hằng ngày, hủy đơn online quá hạn
 │   │       └── config/
-│   └── font_end/            # Frontend (chưa làm)
+│   └── font_end/            # React + Vite (1 web app, menu theo vai trò)
+│       └── src/
+│           ├── api/client.js    # Gọi API, tự refresh token khi hết hạn
+│           ├── auth/            # Đăng nhập, phân quyền theo vai trò
+│           ├── components/      # Layout, form, bảng, modal, soạn kế hoạch tập
+│           └── pages/           # auth/ admin/ member/ trainer/
 └── .github/workflows/ci.yml # Chạy test + build Docker image
 ```
 
@@ -51,6 +57,22 @@ Yêu cầu: JDK 21, MySQL 8, Docker Desktop.
    ./mvnw spring-boot:run
    ```
 5. Mở Swagger: http://localhost:8081/swagger-ui.html
+6. Chạy frontend (cần Node.js 18+, trong `fitness/font_end`):
+   ```bash
+   npm install
+   npm run dev
+   ```
+   Mở http://127.0.0.1:5500. Vite chuyển tiếp `/api` sang backend `localhost:8081` nên không vướng CORS.
+   Cổng 5500 cố định vì VNPay trả người dùng về `http://127.0.0.1:5500/payment-result` (cấu hình `app.fe.base-url`).
+
+### Giao diện theo vai trò
+
+| Vai trò | Màn hình |
+|---|---|
+| ADMIN | Tổng quan (doanh thu, gói bán chạy, tỷ lệ đi tập), check-in, hội viên, lịch & lớp học, thanh toán, gói tập, tài khoản, gửi thông báo, nhật ký thao tác |
+| STAFF (lễ tân) | Lịch hẹn hôm nay, check-in QR / thủ công, hội viên, lịch & lớp học, xác nhận thu tiền tại quầy |
+| TRAINER | Lịch dạy (điểm danh), lịch làm việc hàng tuần, soạn kế hoạch tập cho hội viên |
+| MEMBER | Trang chủ, mua / gia hạn / bảo lưu gói (VNPay hoặc tại quầy), đặt PT / lớp, lịch của tôi, kế hoạch tập, chỉ số cơ thể, QR check-in, lịch sử thanh toán |
 
 ### Cách 2: Chạy toàn bộ bằng Docker (không cần cài MySQL / JDK)
 

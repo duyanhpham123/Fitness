@@ -32,5 +32,8 @@ public interface MembershipMapper {
 	SubscriptionResponse toResponse(Subscription sub);
 
 	@Mapping(target = "subscriptionId", source = "subscription.id")
+	@Mapping(target = "memberId", source = "user.id")
+	@Mapping(target = "memberName", source = "user.fullName")
+	@Mapping(target = "packageName", source = "subscription.membershipPackage.name")
 	PaymentResponse toResponse(Payment payment);
 }

@@ -8,6 +8,7 @@ import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
@@ -16,6 +17,7 @@ import org.springframework.data.repository.query.Param;
 
 import com.duyanh.entity.Payment;
 import com.duyanh.entity.enums.PaymentMethod;
+import com.duyanh.entity.enums.PaymentStatus;
 
 import jakarta.persistence.LockModeType;
 
@@ -37,6 +39,15 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 	Optional<Payment> findByUserIdAndIdempotencyKey(Long userId, String idempotencyKey);
 
 	Page<Payment> findByUserIdOrderByCreatedAtDescIdDesc(Long userId, Pageable pageable);
+
+	// Màn quản lý giao dịch của lễ tân: lọc theo trạng thái nếu có
+	@EntityGraph(attributePaths = { "user", "subscription", "subscription.membershipPackage" })
+	@Query("""
+			select p from Payment p
+			where (:status is null or p.status = :status)
+			order by p.createdAt desc, p.id desc
+			""")
+	Page<Payment> search(@Param("status") PaymentStatus status, Pageable pageable);
 
 	@Modifying(flushAutomatically = true, clearAutomatically = true)
 	@Query("""

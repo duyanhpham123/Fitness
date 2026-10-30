@@ -20,6 +20,7 @@ import com.duyanh.dto.membership.PurchaseResponse;
 import com.duyanh.dto.payment.PaymentResponse;
 import com.duyanh.dto.payment.PaymentUrlResponse;
 import com.duyanh.dto.payment.VnpayIpnResponse;
+import com.duyanh.entity.enums.PaymentStatus;
 import com.duyanh.security.UserPrincipal;
 import com.duyanh.service.PaymentService;
 import com.duyanh.service.PaymentService.VnpayResult;
@@ -46,6 +47,14 @@ public class PaymentController {
 	public PageResponse<PaymentResponse> listMine(@AuthenticationPrincipal UserPrincipal principal,
 			@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
 		return paymentService.listMine(principal.getId(), page, size);
+	}
+
+	@Operation(summary = "Danh sách giao dịch, lọc theo trạng thái (STAFF, ADMIN)")
+	@PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
+	@GetMapping
+	public PageResponse<PaymentResponse> search(@RequestParam(required = false) PaymentStatus status,
+			@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
+		return paymentService.search(status, page, size);
 	}
 
 	@Operation(summary = "Chi tiết giao dịch (chủ giao dịch, STAFF, ADMIN)")

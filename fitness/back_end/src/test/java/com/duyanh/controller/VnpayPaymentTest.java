@@ -134,7 +134,7 @@ class VnpayPaymentTest extends ApiTestSupport {
 
 		mvc.perform(req)
 				.andExpect(status().isFound())
-				.andExpect(header().string("Location", containsString("/payment-result.html")))
+				.andExpect(header().string("Location", containsString("/payment-result?")))
 				.andExpect(header().string("Location", containsString("paymentCode=" + code)))
 				.andExpect(header().string("Location", containsString("result=SUCCESS")));
 	}

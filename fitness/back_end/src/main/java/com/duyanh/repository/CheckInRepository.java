@@ -21,6 +21,10 @@ public interface CheckInRepository extends JpaRepository<CheckIn, Long> {
 	@EntityGraph(attributePaths = { "user", "subscription", "subscription.membershipPackage", "staff" })
 	Optional<CheckIn> findWithDetailsById(Long id);
 
+	// Lượt check-in từ thời điểm cho trước (hôm nay), mới nhất trước: màn lễ tân
+	@EntityGraph(attributePaths = { "user", "subscription", "subscription.membershipPackage", "staff" })
+	List<CheckIn> findByCheckedInAtGreaterThanEqualOrderByCheckedInAtDesc(LocalDateTime since);
+
 	// Lượt check-in chưa check-out của hội viên kể từ thời điểm cho trước (đầu ngày hôm nay)
 	Optional<CheckIn> findFirstByUserIdAndCheckedOutAtIsNullAndCheckedInAtGreaterThanEqualOrderByCheckedInAtDesc(
 			Long userId, LocalDateTime since);

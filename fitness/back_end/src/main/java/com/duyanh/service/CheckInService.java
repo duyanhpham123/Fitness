@@ -5,6 +5,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Base64;
+import java.util.List;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -91,6 +92,18 @@ public class CheckInService {
 		}
 		checkIn.setCheckedOutAt(LocalDateTime.now());
 		return mapper.toResponse(checkIn);
+	}
+
+	/**
+	 * Lượt check-in hôm nay; openOnly = chỉ những người còn đang ở phòng tập (chưa check-out).
+	 */
+	@Transactional(readOnly = true)
+	public List<CheckInResponse> listToday(boolean openOnly) {
+		return checkInRepository.findByCheckedInAtGreaterThanEqualOrderByCheckedInAtDesc(LocalDate.now().atStartOfDay())
+				.stream()
+				.filter(c -> !openOnly || c.getCheckedOutAt() == null)
+				.map(mapper::toResponse)
+				.toList();
 	}
 
 	@Transactional(readOnly = true)
