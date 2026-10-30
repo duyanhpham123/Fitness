@@ -8,6 +8,8 @@ import java.time.LocalDate;
 
 import org.junit.jupiter.api.Test;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
 /**
  * Dữ liệu mẫu: bài tập id 1-4 (ngực, tay), 9 = Plank (tính theo thời gian);
  * kế hoạch id 1 của member1 do HLV id 3 (trainer1) soạn, 3 ngày (ngày id 1 đã hoàn thành, id 2, 3 chưa).
@@ -115,20 +117,26 @@ class WorkoutTest extends ApiTestSupport {
 
 	@Test
 	void completeDays_finishesPlan() throws Exception {
-		postAs(MEMBER1, "/api/workout-plans/1/days/2/complete", "")
+		// Tự tạo kế hoạch 2 ngày cho member2 (không dùng kế hoạch mẫu: trạng thái của nó đổi khi thử trên giao diện)
+		JsonNode plan = readJson(postAs(TRAINER1, "/api/workout-plans", PLAN_FOR_MEMBER2).andExpect(status().isCreated()));
+		String base = "/api/workout-plans/" + plan.get("id").asLong() + "/days/";
+		long day1 = plan.at("/days/0/id").asLong();
+		long day2 = plan.at("/days/1/id").asLong();
+
+		postAs(MEMBER2, base + day1 + "/complete", "")
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.completedDays").value(2))
+				.andExpect(jsonPath("$.completedDays").value(1))
 				.andExpect(jsonPath("$.status").value("ACTIVE"));
-		postAs(MEMBER1, "/api/workout-plans/1/days/2/complete", "")
+		postAs(MEMBER2, base + day1 + "/complete", "")
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.code").value("DAY_ALREADY_COMPLETED"));
 
-		postAs(MEMBER1, "/api/workout-plans/1/days/3/complete", "")
-				.andExpect(jsonPath("$.completedDays").value(3))
+		postAs(MEMBER2, base + day2 + "/complete", "")
+				.andExpect(jsonPath("$.completedDays").value(2))
 				.andExpect(jsonPath("$.status").value("COMPLETED"));
 
 		// Kế hoạch của người khác
-		postAs(MEMBER2, "/api/workout-plans/1/days/3/complete", "").andExpect(status().isNotFound());
+		postAs(MEMBER1, base + day2 + "/complete", "").andExpect(status().isNotFound());
 	}
 
 	@Test

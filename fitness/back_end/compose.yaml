@@ -3,10 +3,10 @@
 #   1) Dev hằng ngày (app chạy bằng IDE / mvnw, MySQL cài trên máy):
 #        docker compose up -d                      -> chỉ chạy Redis
 #
-#   2) Chạy toàn bộ bằng Docker (MySQL + Redis + app), cần file .env (copy từ .env.example):
+#   2) Chạy toàn bộ bằng Docker (MySQL + Redis + backend + frontend), cần file .env (copy từ .env.example):
 #        docker compose --profile app up -d --build
-#      Swagger: http://localhost:8082/swagger-ui.html
-#      Lần chạy đầu MySQL tự nạp database/01_schema.sql + 02_seed.sql.
+#      Web: http://localhost:8080   ·   Swagger: http://localhost:8082/swagger-ui.html
+#      Lần chạy đầu Flyway (trong backend) tự tạo bảng + nạp dữ liệu mẫu.
 #      Xóa dữ liệu để nạp lại từ đầu: docker compose --profile app down -v
 services:
   redis:
@@ -32,6 +32,8 @@ services:
     profiles: ["app"]
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?Chưa đặt DB_PASSWORD trong file .env}
+      # Chỉ tạo database rỗng; bảng do Flyway trong backend tạo
+      MYSQL_DATABASE: fitness_db
       TZ: UTC
     command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
     # Cổng 3307 để không đụng MySQL đang cài trên máy (3306)
@@ -39,8 +41,6 @@ services:
       - "127.0.0.1:3307:3306"
     volumes:
       - mysql-data:/var/lib/mysql
-      - ../../database/01_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
-      - ../../database/02_seed.sql:/docker-entrypoint-initdb.d/02_seed.sql:ro
     # Ping qua TCP (127.0.0.1), không qua socket: lúc nạp script khởi tạo MySQL chạy tạm
     # một server không mở TCP, ping qua socket sẽ báo "sẵn sàng" quá sớm khiến app kết nối lỗi
     healthcheck:
@@ -69,15 +69,30 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
       REDIS_HOST: redis
       JWT_SECRET: ${JWT_SECRET:?Chưa đặt JWT_SECRET trong file .env}
-      APP_FE_BASE_URL: ${APP_FE_BASE_URL:-http://127.0.0.1:5500}
+      # Địa chỉ trang web (service "web" bên dưới): CORS + trang kết quả VNPay
+      APP_FE_BASE_URL: ${APP_FE_BASE_URL:-http://localhost:8080}
       VNPAY_TMN_CODE: ${VNPAY_TMN_CODE:-}
       VNPAY_HASH_SECRET: ${VNPAY_HASH_SECRET:-}
-      VNPAY_RETURN_URL: http://localhost:8082/api/payments/vnpay/return
+      VNPAY_RETURN_URL: ${APP_FE_BASE_URL:-http://localhost:8080}/api/payments/vnpay/return
+      # Mặc định nạp cả dữ liệu mẫu (demo). Deploy thật: FLYWAY_LOCATIONS=classpath:db/migration trong .env
+      FLYWAY_LOCATIONS: ${FLYWAY_LOCATIONS:-classpath:db/migration,classpath:db/seed}
       # Trả mã OTP trong response để thử khi chưa cấu hình mail; tắt (false) khi deploy thật
       APP_OTP_EXPOSE_IN_RESPONSE: ${APP_OTP_EXPOSE_IN_RESPONSE:-true}
       # Không log câu SQL + tham số như lúc dev
       LOGGING_LEVEL_ORG_HIBERNATE_SQL: INFO
       LOGGING_LEVEL_ORG_HIBERNATE_ORM_JDBC_BIND: INFO
+    restart: unless-stopped
+
+  web:
+    build: ../font_end
+    image: fitness-frontend
+    container_name: fitness-web
+    profiles: ["app"]
+    depends_on:
+      - app
+    # nginx: phục vụ React + chuyển tiếp /api sang service app
+    ports:
+      - "127.0.0.1:8080:80"
     restart: unless-stopped
 
 volumes:

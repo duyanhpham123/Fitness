@@ -1,6 +1,6 @@
-# CI backend: chạy toàn bộ test với MySQL + Redis thật, sau đó thử build Docker image.
-# Giả định thư mục gốc của repo là thư mục chứa database/ và fitness/back_end/.
-name: Backend CI
+# CI: test backend với MySQL + Redis thật, build frontend, rồi thử build 2 Docker image.
+# Giả định thư mục gốc của repo là thư mục chứa database/ và fitness/.
+name: CI
 
 on:
   push:
@@ -8,10 +8,9 @@ on:
   pull_request:
 
 jobs:
-  test:
+  backend-test:
     runs-on: ubuntu-latest
     env:
-      DB_PASSWORD: ci-root-password
       # Giờ Việt Nam như máy chạy thật (gom doanh thu theo ngày, job 00:05...)
       TZ: Asia/Ho_Chi_Minh
     services:
@@ -19,11 +18,13 @@ jobs:
         image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: ci-root-password
+          # Database rỗng; Flyway tạo bảng + nạp dữ liệu mẫu khi test khởi động
+          MYSQL_DATABASE: fitness_db
           TZ: UTC
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping -h localhost -uroot -pci-root-password --silent"
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pci-root-password --silent"
           --health-interval=5s --health-timeout=5s --health-retries=30
       redis:
         image: redis:7.4-alpine
@@ -42,12 +43,6 @@ jobs:
           java-version: "21"
           cache: maven
 
-      # Test dùng dữ liệu mẫu nên phải nạp schema + seed trước
-      - name: Load schema and seed data
-        run: |
-          mysql -h127.0.0.1 -uroot -p"$DB_PASSWORD" --default-character-set=utf8mb4 < database/01_schema.sql
-          mysql -h127.0.0.1 -uroot -p"$DB_PASSWORD" --default-character-set=utf8mb4 < database/02_seed.sql
-
       - name: Run tests
         working-directory: fitness/back_end
         env:
@@ -61,10 +56,27 @@ jobs:
           name: surefire-reports
           path: fitness/back_end/target/surefire-reports
 
-  docker:
-    needs: test
+  frontend-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build Docker image
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: fitness/font_end/package-lock.json
+      - name: Build
+        working-directory: fitness/font_end
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+
+  docker:
+    needs: [backend-test, frontend-build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build backend image
         run: docker build -t fitness-backend:ci fitness/back_end
+      - name: Build frontend image
+        run: docker build -t fitness-frontend:ci fitness/font_end

@@ -11,13 +11,14 @@ Frontend: **React 18 · Vite · React Router · Recharts**
 
 ```
 Fitness/
-├── database/
-│   ├── 01_schema.sql        # Tạo database fitness_db + 20 bảng (DROP DATABASE trước khi tạo!)
-│   └── 02_seed.sql          # Dữ liệu mẫu + tài khoản test
+├── database/                # Script SQL bản tham khảo / chạy tay (app dùng Flyway, xem bên dưới)
 ├── fitness/
 │   ├── back_end/            # Spring Boot REST API
 │   │   ├── compose.yaml     # Redis (dev) / MySQL + Redis + app (profile "app")
 │   │   ├── Dockerfile
+│   │   ├── src/main/resources/db/
+│   │   │   ├── migration/   # Flyway: V1__init_schema.sql, V2__... (schema)
+│   │   │   └── seed/        # Flyway: V1_1__seed_dev_data.sql (dữ liệu mẫu, chỉ dev / demo)
 │   │   └── src/main/java/com/duyanh/
 │   │       ├── controller/  service/  repository/  entity/  dto/  mapper/
 │   │       ├── security/    # JWT, filter, blacklist token
@@ -25,13 +26,13 @@ Fitness/
 │   │       ├── event/       # Sự kiện nghiệp vụ -> thông báo
 │   │       ├── scheduler/   # Job hằng ngày, hủy đơn online quá hạn
 │   │       └── config/
-│   └── font_end/            # React + Vite (1 web app, menu theo vai trò)
+│   └── font_end/            # React + Vite (1 web app, menu theo vai trò); Dockerfile + nginx.conf
 │       └── src/
 │           ├── api/client.js    # Gọi API, tự refresh token khi hết hạn
 │           ├── auth/            # Đăng nhập, phân quyền theo vai trò
 │           ├── components/      # Layout, form, bảng, modal, soạn kế hoạch tập
 │           └── pages/           # auth/ admin/ member/ trainer/
-└── .github/workflows/ci.yml # Chạy test + build Docker image
+└── .github/workflows/ci.yml # Test backend, build frontend, build 2 Docker image
 ```
 
 ## Chạy dự án
@@ -40,9 +41,9 @@ Fitness/
 
 Yêu cầu: JDK 21, MySQL 8, Docker Desktop.
 
-1. Tạo database và dữ liệu mẫu (chạy trong thư mục `database`; **xóa sạch dữ liệu cũ** của `fitness_db`):
+1. Tạo database rỗng (bảng và dữ liệu mẫu do **Flyway** tự tạo khi app khởi động lần đầu):
    ```bash
-   mysql -uroot -p --default-character-set=utf8mb4 -e "source 01_schema.sql; source 02_seed.sql"
+   mysql -uroot -p -e "CREATE DATABASE fitness_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
    ```
 2. Tạo file `fitness/back_end/src/main/resources/application-local.properties` (đã gitignore):
    ```properties
@@ -83,8 +84,9 @@ cp .env.example .env      # rồi điền DB_PASSWORD và JWT_SECRET
 docker compose --profile app up -d --build
 ```
 
+- Web: http://localhost:8080 (nginx phục vụ React và chuyển tiếp `/api` sang backend)
 - Swagger: http://localhost:8082/swagger-ui.html
-- Lần chạy đầu MySQL trong Docker tự nạp `01_schema.sql` + `02_seed.sql`.
+- Lần chạy đầu Flyway tạo bảng và nạp dữ liệu mẫu vào MySQL trong Docker.
 - Nạp lại dữ liệu từ đầu: `docker compose --profile app down -v` rồi chạy lại lệnh trên.
 
 ## Tài khoản test
@@ -135,6 +137,14 @@ Lỗi trả về cùng 1 format: `{ timestamp, status, code, message, path, erro
 | `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET` | Tài khoản VNPay sandbox: đăng ký tại https://sandbox.vnpayment.vn/devreg/ |
 | `APP_OTP_EXPOSE_IN_RESPONSE` | `true` = trả mã OTP trong response để thử khi chưa có mail. **Đặt `false` khi deploy** |
 | `spring.mail.*` | SMTP gửi email (chưa cấu hình thì chỉ ghi log) |
+
+## Database migration (Flyway)
+
+- Backend khởi động sẽ tự chạy các file trong `src/main/resources/db/migration` (schema) và `db/seed` (dữ liệu mẫu).
+- **Thay đổi schema**: tạo file mới `V2__mo_ta.sql`, `V3__...`; **không sửa** file đã chạy (Flyway kiểm tra checksum).
+- **Deploy thật**: đặt `FLYWAY_LOCATIONS=classpath:db/migration` để không nạp tài khoản test.
+- Database tạo bằng script tay trước khi có Flyway được tự động đánh dấu là đã ở phiên bản 1.1 (baseline), không mất dữ liệu.
+- Làm lại từ đầu ở máy dev: xóa rồi tạo lại database rỗng `fitness_db`, khởi động lại backend.
 
 ## Chạy test
 

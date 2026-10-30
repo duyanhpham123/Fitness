@@ -62,6 +62,15 @@
 			<artifactId>mysql-connector-j</artifactId>
 			<scope>runtime</scope>
 		</dependency>
+		<!-- Flyway: tạo / nâng cấp schema tự động khi app khởi động (src/main/resources/db/) -->
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-mysql</artifactId>
+		</dependency>
 		<!-- Redis: OTP, Idempotency-Key, blacklist token, cache -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

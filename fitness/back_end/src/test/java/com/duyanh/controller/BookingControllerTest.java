@@ -159,7 +159,12 @@ class BookingControllerTest extends ApiTestSupport {
 	@Test
 	void cancelWithinTwoHours_isRejected() throws Exception {
 		LocalDateTime soon = LocalDateTime.now().plusHours(1).truncatedTo(ChronoUnit.MINUTES);
-		long sessionId = createSession(TRAINER2_ID, soon, null).get("id").asLong();
+		// HLV mới tạo, chắc chắn chưa có lịch: HLV mẫu có buổi học cố định trong dữ liệu mẫu,
+		// "1 giờ nữa" có thể trùng tùy giờ chạy test
+		long freeTrainerId = readJson(postAs(ADMIN, "/api/admin/users", """
+				{"email":"free.trainer@fitness.local","password":"%s","fullName":"HLV Rảnh","role":"TRAINER"}
+				""".formatted(SEED_PASSWORD)).andExpect(status().isCreated())).get("id").asLong();
+		long sessionId = createSession(freeTrainerId, soon, null).get("id").asLong();
 		long bookingId = readJson(bookClass(MEMBER1, sessionId).andExpect(status().isCreated())).get("id").asLong();
 
 		mvc.perform(auth(delete("/api/bookings/" + bookingId), MEMBER1))
