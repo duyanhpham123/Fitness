@@ -1,0 +1,14 @@
+# Backend có .gitignore riêng trong fitness/back_end (target/, file IDE, application-local.properties, .env)
+
+# File nén tải về (vd. project gốc từ Spring Initializr)
+*.zip
+
+# Secret
+.env
+application-local.properties
+
+# Hệ điều hành / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

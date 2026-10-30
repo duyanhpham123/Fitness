@@ -1,0 +1,85 @@
+# Hai cách dùng:
+#
+#   1) Dev hằng ngày (app chạy bằng IDE / mvnw, MySQL cài trên máy):
+#        docker compose up -d                      -> chỉ chạy Redis
+#
+#   2) Chạy toàn bộ bằng Docker (MySQL + Redis + app), cần file .env (copy từ .env.example):
+#        docker compose --profile app up -d --build
+#      Swagger: http://localhost:8082/swagger-ui.html
+#      Lần chạy đầu MySQL tự nạp database/01_schema.sql + 02_seed.sql.
+#      Xóa dữ liệu để nạp lại từ đầu: docker compose --profile app down -v
+services:
+  redis:
+    image: redis:7.4-alpine
+    container_name: fitness-redis
+    # Chỉ mở cho máy local, không lộ ra mạng ngoài
+    ports:
+      - "127.0.0.1:6379:6379"
+    # Lưu dữ liệu xuống đĩa (AOF) để restart container không mất blacklist token
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mysql:
+    image: mysql:8.0
+    container_name: fitness-mysql
+    profiles: ["app"]
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?Chưa đặt DB_PASSWORD trong file .env}
+      TZ: UTC
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    # Cổng 3307 để không đụng MySQL đang cài trên máy (3306)
+    ports:
+      - "127.0.0.1:3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ../../database/01_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ../../database/02_seed.sql:/docker-entrypoint-initdb.d/02_seed.sql:ro
+    # Ping qua TCP (127.0.0.1), không qua socket: lúc nạp script khởi tạo MySQL chạy tạm
+    # một server không mở TCP, ping qua socket sẽ báo "sẵn sàng" quá sớm khiến app kết nối lỗi
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  app:
+    build: .
+    image: fitness-backend
+    container_name: fitness-app
+    profiles: ["app"]
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # Cổng 8082 để chạy song song được với app dev ở 8081
+    ports:
+      - "127.0.0.1:8082:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/fitness_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis
+      JWT_SECRET: ${JWT_SECRET:?Chưa đặt JWT_SECRET trong file .env}
+      APP_FE_BASE_URL: ${APP_FE_BASE_URL:-http://127.0.0.1:5500}
+      VNPAY_TMN_CODE: ${VNPAY_TMN_CODE:-}
+      VNPAY_HASH_SECRET: ${VNPAY_HASH_SECRET:-}
+      VNPAY_RETURN_URL: http://localhost:8082/api/payments/vnpay/return
+      # Trả mã OTP trong response để thử khi chưa cấu hình mail; tắt (false) khi deploy thật
+      APP_OTP_EXPOSE_IN_RESPONSE: ${APP_OTP_EXPOSE_IN_RESPONSE:-true}
+      # Không log câu SQL + tham số như lúc dev
+      LOGGING_LEVEL_ORG_HIBERNATE_SQL: INFO
+      LOGGING_LEVEL_ORG_HIBERNATE_ORM_JDBC_BIND: INFO
+    restart: unless-stopped
+
+volumes:
+  redis-data:
+  mysql-data:

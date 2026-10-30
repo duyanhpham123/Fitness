@@ -1,0 +1,15 @@
+# Chỉ gửi pom.xml + src vào Docker build
+target/
+.mvn/
+.settings/
+.classpath
+.project
+.idea/
+.vscode/
+*.iml
+HELP.md
+Fitness
+
+# Secret của máy dev: không được đóng vào image
+.env
+src/main/resources/application-local.properties

@@ -1,0 +1,359 @@
+Fitness
+
+
+| Module              |         API |  Nghiệp vụ                                              | Phạm vi
+| ------------------- | ----------: | ------------------------------------------------------- | --------
+| Authentication      |           7 |  Đăng ký, đăng nhập, refresh/logout JWT, quên mật khẩu   | MVP
+| User                |           3 |  Hồ sơ cá nhân, đổi mật khẩu                             | MVP
+| Membership          |           6 |  Gói tập mẫu (Package), gói đã mua (Subscription), gia hạn, bảo lưu | MVP
+| Trainer             |           4 |  Hồ sơ huấn luyện viên, lịch làm việc                    | MVP
+| Class               |           4 |  Lớp học nhóm (Yoga, Zumba...), buổi học, sức chứa      | MVP
+| Workout             |           5 |  Bài tập, kế hoạch tập, đánh dấu hoàn thành             | MVP
+| Booking             |           5 |  Đặt lịch PT 1-1 / đặt lớp, hủy lịch, lịch sử           | MVP
+| Payment             |           4 |  Tạo thanh toán, IPN callback, trạng thái, lịch sử      | MVP
+| Notification        |           4 |  Thông báo lịch tập, thanh toán, hết hạn gói            | MVP
+| OTP                 |           2 |  Gửi / xác thực mã OTP qua Redis                         | MVP
+| Check-in            |           2 |  Check-in tại phòng tập (QR), lịch sử ra vào            | Mở rộng
+| Admin               |           6 |  Quản lý người dùng, nhân viên, phân quyền              | MVP
+| Report / Dashboard  |           6 |  Tổng quan, doanh thu, hội viên, gói bán chạy, tỷ lệ đi tập | MVP
+| Audit Log           |           2 |  Lưu vết thao tác quan trọng                            | MVP
+| **Tổng**            | ** 60 API** |
+
+Ghi chú:
+- Dashboard và Report trước đây tách riêng (7 + 5) nhưng trùng chức năng thống kê -> gộp thành 1 module.
+- Thêm Class (mockup có "Danh sách lớp học - còn 5 chỗ") và Check-in (nghiệp vụ cốt lõi của phòng gym).
+- Payment thêm API IPN callback để cổng thanh toán (VNPay/Momo) gọi về.
+
+Vai trò (Role): ADMIN, STAFF (lễ tân), TRAINER, MEMBER
+
+
+Danh sách API chi tiết:
+
+Authentication (7)
+  POST /api/auth/register
+  POST /api/auth/login
+  POST /api/auth/refresh
+  POST /api/auth/logout
+  POST /api/auth/verify-email          (xác thực OTP sau khi đăng ký)
+  POST /api/auth/forgot-password
+  POST /api/auth/reset-password
+
+User (3)
+  GET  /api/users/me
+  PUT  /api/users/me
+  PUT  /api/users/me/password
+
+Membership (6)
+  GET  /api/packages                    (danh sách gói tập)
+  POST /api/packages                    (ADMIN)
+  PUT  /api/packages/{id}               (ADMIN)
+  POST /api/subscriptions               (mua / gia hạn gói -> tạo Payment PENDING)
+  GET  /api/subscriptions/me
+  POST /api/subscriptions/{id}/freeze   (bảo lưu)
+
+Trainer (4)
+  GET  /api/trainers
+  GET  /api/trainers/{id}
+  GET  /api/trainers/{id}/slots         (khung giờ còn trống)
+  PUT  /api/trainers/me/schedule        (TRAINER cập nhật lịch làm việc)
+
+Class (4)
+  GET  /api/classes
+  POST /api/classes                     (ADMIN/STAFF)
+  GET  /api/class-sessions?date=        (buổi học theo ngày, còn bao nhiêu chỗ)
+  POST /api/class-sessions              (ADMIN/STAFF)
+
+Workout (5)
+  GET  /api/exercises
+  GET  /api/workout-plans/me
+  POST /api/workout-plans               (TRAINER tạo cho hội viên)
+  PUT  /api/workout-plans/{id}
+  POST /api/workout-plans/{id}/days/{dayId}/complete
+
+Booking (5)
+  POST   /api/bookings/pt               (đặt PT 1-1)
+  POST   /api/bookings/class            (đặt lớp)
+  DELETE /api/bookings/{id}             (hủy lịch, theo quy định hủy trước N giờ)
+  GET    /api/bookings/me               (lịch sử đặt lịch)
+  GET    /api/bookings/trainer/me       (TRAINER xem lịch được đặt)
+
+Payment (4)
+  POST /api/payments                    (tạo thanh toán, header Idempotency-Key)
+  GET  /api/payments/vnpay/ipn          (cổng thanh toán gọi về, kiểm tra chữ ký)
+  GET  /api/payments/{id}
+  GET  /api/payments/me                 (lịch sử giao dịch)
+
+Notification (4)
+  GET  /api/notifications/me
+  PUT  /api/notifications/{id}/read
+  PUT  /api/notifications/read-all
+  POST /api/notifications/broadcast     (ADMIN gửi thông báo chung)
+
+OTP (2)
+  POST /api/otp/send
+  POST /api/otp/verify
+
+Check-in (2)
+  POST /api/check-ins                   (quét QR tại quầy)
+  GET  /api/check-ins/me
+
+Admin (6)
+  GET  /api/admin/users
+  POST /api/admin/users                 (tạo nhân viên / huấn luyện viên)
+  PUT  /api/admin/users/{id}
+  PUT  /api/admin/users/{id}/status     (khóa / mở khóa)
+  PUT  /api/admin/users/{id}/roles
+  GET  /api/admin/members               (danh sách hội viên + trạng thái gói)
+
+Report / Dashboard (6)
+  GET  /api/reports/overview            (tổng hội viên, doanh thu tháng, lượt đặt lịch, gói đang hoạt động)
+  GET  /api/reports/revenue?from=&to=
+  GET  /api/reports/members/new
+  GET  /api/reports/packages/top
+  GET  /api/reports/attendance          (tỷ lệ đi tập)
+  GET  /api/reports/bookings/today
+
+Audit Log (2)
+  GET  /api/audit-logs                  (ADMIN, lọc theo user / action / thời gian)
+  GET  /api/audit-logs/{id}
+
+
+                         FITNESS MANAGEMENT SYSTEM
+                                KIẾN TRÚC
+                                    |
+                                    v
+                         +----------------------+
+                         |     React (Web)      |
+                         | Mobile: giai đoạn sau|
+                         +----------+-----------+
+                                    |  REST + JWT
+                                    v
+                         +----------------------+
+                         |    Spring Boot API   |
+                         | Controller - Service |
+                         |      Repository      |
+                         +----------+-----------+
+                                    |
+          +-------------------------+-------------------------+
+          |                         |                         |
+          v                         v                         v
+ +----------------+        +------------------+        +----------------+
+ | Authentication |        |     Fitness      |        |     Admin      |
+ |                |        |                  |        |                |
+ | Register/Login |        | Membership       |        | Dashboard      |
+ | JWT + Refresh  |        | Trainer / Class  |        | User Management|
+ | Role / Access  |        | Workout          |        | Reports        |
+ | OTP            |        | Booking          |        | Audit Log      |
+ +-------+--------+        | Payment          |        +----------------+
+         |                 | Check-in         |
+         v                 +--------+---------+
+ +----------------+                 |
+ |      User      |                 | Domain Event (sau khi commit)
+ | User Profile   |                 v
+ +----------------+        +------------------+
+                           |   Event / Queue  |
+                           | Giai đoạn đầu:   |
+                           | Spring Event +   |
+                           | @Async           |
+                           | Nâng cao:        |
+                           | RabbitMQ + Outbox|
+                           +--------+---------+
+                                    |
+                     +--------------+--------------+
+                     v                             v
+            +------------------+          +------------------+
+            |  Notification    |          |    Audit Log     |
+            | Email (SMS/Push  |          |                  |
+            |  giai đoạn sau)  |          |                  |
+            +------------------+          +------------------+
+
+ Lưu trữ:
+ +-------------------------------+   +-----------------------------------+
+ |            MySQL              |   |              Redis                |
+ | users, roles, packages,       |   | OTP (TTL 5 phút, giới hạn số lần) |
+ | subscriptions, trainers,      |   | Idempotency-Key (TTL 24h)         |
+ | class_sessions, bookings,     |   | Blacklist token khi logout        |
+ | payments, workout_plans,      |   | Cache dashboard                   |
+ | notifications, audit_logs,    |   +-----------------------------------+
+ | check_ins                     |
+ +-------------------------------+
+
+ Chỉ chọn MỘT message broker (khuyến nghị RabbitMQ), không dùng song song Kafka và RabbitMQ.
+
+
+Luồng nghiệp vụ thanh toán / mua gói tập:
+
+JWT Authentication
+        |
+        v
+Chọn gói tập (Membership: kiểm tra giá, thời hạn)
+        |
+        v
+Kiểm tra Idempotency-Key (Redis)  -- đã xử lý --> trả lại kết quả cũ
+        |
+        v
+Tạo Payment (PENDING) + redirect sang cổng thanh toán
+        |
+        v
+IPN Callback từ cổng thanh toán
+  - Kiểm tra chữ ký (checksum)
+  - Kiểm tra mã giao dịch của cổng đã xử lý chưa (idempotent)
+        |
+        v
+@Transactional (1 database transaction)
+  - Payment = SUCCESS
+  - Tạo / gia hạn Subscription (ACTIVE)
+        |
+        v
+Phát sự kiện SAU KHI COMMIT (@TransactionalEventListener AFTER_COMMIT)
+        |
+        v
+Notification (email xác nhận thanh toán)
+        |
+        v
+Audit Log
+
+
+Luồng nghiệp vụ đặt lịch tập:
+
+User Login (JWT)
+    |
+    v
+Check Membership (Subscription ACTIVE, chưa hết hạn)
+    |
+    v
+Kiểm tra Idempotency-Key
+    |
+    v
++---------------------------+-------------------------------+
+| PT 1-1                    | Lớp học nhóm                  |
+| Check Trainer Schedule    | Check ClassSession            |
+| Check slot còn trống      | Check còn chỗ (sức chứa)      |
++-------------+-------------+---------------+---------------+
+              |                             |
+              v                             v
+ Unique constraint DB             Update nguyên tử:
+ (trainer_id, slot_start)         UPDATE class_session
+ -> trùng thì trả 409             SET booked = booked + 1
+                                  WHERE id = ? AND booked < capacity
+                                  -> 0 dòng thì hết chỗ, trả 409
+              |                             |
+              +--------------+--------------+
+                             v
+                       Create Booking
+                             |
+                             v
+               Notification (sau khi commit)
+                             |
+                             v
+                      Booking History
+
+Quy định hủy lịch: chỉ được hủy trước N giờ (vd. 2 giờ); không đến (no-show) thì đánh dấu NO_SHOW.
+
+
+Luồng nghiệp vụ chính:
+
+
+01
+
+JWT Authentication
+
+Đăng nhập, cấp access token (ngắn hạn) và refresh token; phân quyền ADMIN, STAFF, TRAINER, MEMBER.
+
+
+02
+
+Membership
+
+Chọn gói tập, kiểm tra giá và thời hạn.
+
+
+03
+
+Idempotency
+
+Kiểm tra Idempotency-Key trước khi tạo giao dịch hoặc đặt lịch, tránh trùng khi client gửi lại request.
+
+
+04
+
+Payment
+
+Tạo giao dịch PENDING, nhận IPN callback, kiểm tra chữ ký và xác nhận kết quả thanh toán.
+
+
+05
+
+@Transactional
+
+Cập nhật Payment và kích hoạt / gia hạn gói tập nhất quán trong cùng một database transaction.
+
+
+06
+
+Booking
+
+Kiểm tra trạng thái hội viên và lịch trống của huấn luyện viên / số chỗ của lớp.
+
+
+07
+
+Database Constraint / Lock
+
+Ngăn hai người đặt trùng một khung giờ hoặc vượt sức chứa lớp khi có cạnh tranh.
+
+
+08
+
+Notification
+
+Gửi thông báo xác nhận đặt lịch hoặc thanh toán SAU KHI transaction commit thành công.
+
+
+09
+
+Audit Log
+
+Ghi nhận các thao tác quan trọng (AOP + annotation @Auditable, ghi bất đồng bộ).
+
+
+Thứ tự triển khai:
+
+Giai đoạn 1 — Khởi tạo nền tảng
+[ ] 01. Tạo Git repository + Spring Boot project
+[ ] 02. docker-compose (MySQL + Redis) + cấu hình application.yml theo profile (dev/prod)
+[ ] 03. Thiết kế ERD, Entity và quan hệ database
+[ ] 04. Flyway migration
+[ ] 05. Repository
+[ ] 06. DTO + Mapper (MapStruct)
+[ ] 07. Global Exception Handler + format response chung
+[ ] 08. Swagger (springdoc-openapi)
+
+Giai đoạn 2 — Người dùng và bảo mật
+[ ] 09. User/Register
+[ ] 10. Login + JWT (access + refresh token) + phân quyền ADMIN, STAFF, TRAINER, MEMBER
+[ ] 11. Logout (blacklist token trên Redis) + quên / đặt lại mật khẩu
+[ ] 12. User Profile
+[ ] 13. Validation và xử lý lỗi bảo mật (401/403)
+
+Giai đoạn 3 — Nghiệp vụ Fitness (viết test song song từng module)
+[ ] 14. Membership: Package + Subscription, thời hạn, job tự chuyển gói hết hạn sang EXPIRED
+[ ] 15. Trainer: hồ sơ và lịch làm việc
+[ ] 16. Class: lớp học và buổi học (sức chứa)
+[ ] 17. Workout: bài tập và kế hoạch
+[ ] 18. Booking: đặt lịch PT / đặt lớp, hủy lịch, chống đặt trùng
+[ ] 19. Payment: VNPay sandbox, IPN callback, idempotency, lịch sử giao dịch
+[ ] 20. Transaction History / Booking History
+
+Giai đoạn 4 — Tính năng nâng cao
+[ ] 21. Notification (Spring Event + @TransactionalEventListener, email)
+[ ] 22. OTP + Redis (TTL, giới hạn số lần nhập sai, rate limit gửi lại)
+[ ] 23. Audit Log (AOP)
+[ ] 24. Admin + Report / Dashboard
+[ ] 25. Check-in (QR)
+[ ] 26. RabbitMQ + Outbox pattern (nếu cần)
+
+Giai đoạn 5 — Kiểm thử và triển khai
+[ ] 27. Integration Test với Testcontainers (ưu tiên Booking và Payment)
+[ ] 28. Dockerfile cho ứng dụng + CI (GitHub Actions)
+[ ] 29. README + cấu hình triển khai

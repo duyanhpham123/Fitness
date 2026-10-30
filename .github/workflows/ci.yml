@@ -1,0 +1,70 @@
+# CI backend: chạy toàn bộ test với MySQL + Redis thật, sau đó thử build Docker image.
+# Giả định thư mục gốc của repo là thư mục chứa database/ và fitness/back_end/.
+name: Backend CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      DB_PASSWORD: ci-root-password
+      # Giờ Việt Nam như máy chạy thật (gom doanh thu theo ngày, job 00:05...)
+      TZ: Asia/Ho_Chi_Minh
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci-root-password
+          TZ: UTC
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -uroot -pci-root-password --silent"
+          --health-interval=5s --health-timeout=5s --health-retries=30
+      redis:
+        image: redis:7.4-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s --health-timeout=3s --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      # Test dùng dữ liệu mẫu nên phải nạp schema + seed trước
+      - name: Load schema and seed data
+        run: |
+          mysql -h127.0.0.1 -uroot -p"$DB_PASSWORD" --default-character-set=utf8mb4 < database/01_schema.sql
+          mysql -h127.0.0.1 -uroot -p"$DB_PASSWORD" --default-character-set=utf8mb4 < database/02_seed.sql
+
+      - name: Run tests
+        working-directory: fitness/back_end
+        env:
+          SPRING_DATASOURCE_PASSWORD: ci-root-password
+        run: mvn -B test
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: fitness/back_end/target/surefire-reports
+
+  docker:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker image
+        run: docker build -t fitness-backend:ci fitness/back_end
