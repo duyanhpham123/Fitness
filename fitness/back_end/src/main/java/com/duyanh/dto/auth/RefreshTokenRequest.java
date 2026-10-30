@@ -1,12 +1,10 @@
 package com.duyanh.dto.auth;
 
-import jakarta.validation.constraints.NotBlank;
-
 /**
- * Dùng cho cả /api/auth/refresh và /api/auth/logout.
+ * Dùng cho /api/auth/refresh và /api/auth/logout.
+ *
+ * @param refreshToken không bắt buộc: trình duyệt gửi qua cookie HttpOnly; client không dùng cookie
+ *                     (app di động, Swagger) thì gửi trong body
  */
-public record RefreshTokenRequest(
-
-		@NotBlank(message = "Refresh token không được để trống")
-		String refreshToken) {
+public record RefreshTokenRequest(String refreshToken) {
 }

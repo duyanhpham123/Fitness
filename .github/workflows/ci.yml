@@ -13,27 +13,7 @@ jobs:
     env:
       # Giờ Việt Nam như máy chạy thật (gom doanh thu theo ngày, job 00:05...)
       TZ: Asia/Ho_Chi_Minh
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: ci-root-password
-          # Database rỗng; Flyway tạo bảng + nạp dữ liệu mẫu khi test khởi động
-          MYSQL_DATABASE: fitness_db
-          TZ: UTC
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pci-root-password --silent"
-          --health-interval=5s --health-timeout=5s --health-retries=30
-      redis:
-        image: redis:7.4-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd="redis-cli ping"
-          --health-interval=5s --health-timeout=3s --health-retries=10
-
+    # Không cần khai báo MySQL / Redis: test tự bật container bằng Testcontainers (runner có sẵn Docker)
     steps:
       - uses: actions/checkout@v4
 
@@ -45,8 +25,6 @@ jobs:
 
       - name: Run tests
         working-directory: fitness/back_end
-        env:
-          SPRING_DATASOURCE_PASSWORD: ci-root-password
         run: mvn -B test
 
       - name: Upload test reports

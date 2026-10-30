@@ -15,22 +15,25 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.duyanh.TestcontainersConfig;
 import com.duyanh.repository.UserRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * Cần MySQL (fitness_db + 02_seed.sql) và Redis đang chạy.
+ * Chạy trên MySQL + Redis tạm của Testcontainers (cần Docker), dữ liệu mẫu do Flyway nạp.
  * Dữ liệu MySQL tự rollback sau mỗi test; key Redis của các email dùng trong test được xóa trước và sau mỗi test.
  * Tài khoản mẫu: member1@fitness.local / Fitness@123
  */
 @SpringBootTest
+@Import(TestcontainersConfig.class)
 @AutoConfigureMockMvc
 @Transactional
 class AuthControllerTest {

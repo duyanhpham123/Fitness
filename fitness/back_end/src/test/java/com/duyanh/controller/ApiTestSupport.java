@@ -11,20 +11,24 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.duyanh.TestcontainersConfig;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Lớp cha cho test API: đăng nhập bằng tài khoản mẫu và gọi API kèm token.
- * Cần MySQL (fitness_db + 02_seed.sql) và Redis đang chạy. Dữ liệu MySQL tự rollback sau mỗi test.
+ * Chạy trên MySQL + Redis tạm của Testcontainers (cần Docker), dữ liệu mẫu do Flyway nạp.
+ * Dữ liệu MySQL tự rollback sau mỗi test.
  */
 @SpringBootTest
+@Import(TestcontainersConfig.class)
 @AutoConfigureMockMvc
 @Transactional
 abstract class ApiTestSupport {

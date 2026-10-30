@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { api, setUnauthorizedHandler, tokens } from '../api/client.js';
+import { api, refreshTokens, setUnauthorizedHandler, tokens } from '../api/client.js';
 
 const AuthContext = createContext(null);
 
@@ -20,14 +20,12 @@ export function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
+  // Tải lại trang: access token (trong bộ nhớ) đã mất -> dùng cookie refresh token để khôi phục phiên.
+  // refreshTokens() dùng chung 1 request nếu bị gọi 2 lần (React StrictMode), tránh dùng lại token cũ.
   useEffect(() => {
     setUnauthorizedHandler(clearSession);
-    if (!tokens.access) {
-      setLoading(false);
-      return;
-    }
-    api('/api/users/me')
-      .then(setUser)
+    refreshTokens()
+      .then((res) => setUser(res.user))
       .catch(clearSession)
       .finally(() => setLoading(false));
   }, [clearSession]);
@@ -55,11 +53,9 @@ export function AuthProvider({ children }) {
         return startSession(res);
       },
       async logout() {
-        const refreshToken = tokens.refresh;
-        if (refreshToken) {
-          // Gửi kèm access token để backend chặn luôn token này; lỗi mạng cũng vẫn đăng xuất ở máy
-          await api('/api/auth/logout', { method: 'POST', body: { refreshToken } }).catch(() => {});
-        }
+        // Backend thu hồi refresh token trong cookie, xóa cookie và chặn luôn access token đang gửi kèm;
+        // lỗi mạng cũng vẫn đăng xuất ở máy
+        await api('/api/auth/logout', { method: 'POST' }).catch(() => {});
         clearSession();
       },
       async reloadUser() {

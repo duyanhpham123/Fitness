@@ -1,10 +1,17 @@
 // Gọi REST API của backend. Access token hết hạn (401 TOKEN_EXPIRED) thì tự refresh rồi gọi lại 1 lần.
+//
+// Lưu token:
+// - Access token (15 phút): chỉ giữ trong bộ nhớ, mất khi tải lại trang.
+// - Refresh token: cookie HttpOnly do backend đặt, JavaScript không đọc được (chống đánh cắp qua XSS);
+//   trình duyệt tự gửi khi gọi /api/auth/refresh. Tải lại trang -> gọi refresh để lấy lại access token.
 // Refresh token chỉ dùng được 1 lần (backend xoay vòng), nên nhiều request cùng hết hạn
 // phải dùng chung 1 lần refresh (biến `refreshing`).
 
 const BASE = import.meta.env.VITE_API_URL || '';
-const ACCESS_KEY = 'fitness.accessToken';
-const REFRESH_KEY = 'fitness.refreshToken';
+
+// Dọn token do phiên bản cũ lưu trong localStorage
+localStorage.removeItem('fitness.accessToken');
+localStorage.removeItem('fitness.refreshToken');
 
 export class ApiError extends Error {
   constructor(status, body) {
@@ -15,20 +22,17 @@ export class ApiError extends Error {
   }
 }
 
+let accessToken = null;
+
 export const tokens = {
   get access() {
-    return localStorage.getItem(ACCESS_KEY);
+    return accessToken;
   },
-  get refresh() {
-    return localStorage.getItem(REFRESH_KEY);
-  },
-  save({ accessToken, refreshToken }) {
-    localStorage.setItem(ACCESS_KEY, accessToken);
-    localStorage.setItem(REFRESH_KEY, refreshToken);
+  save(auth) {
+    accessToken = auth.accessToken;
   },
   clear() {
-    localStorage.removeItem(ACCESS_KEY);
-    localStorage.removeItem(REFRESH_KEY);
+    accessToken = null;
   },
 };
 
@@ -49,14 +53,11 @@ async function readBody(res) {
 }
 
 let refreshing = null;
-function refreshTokens() {
+/** Đổi cookie refresh token lấy access token mới; trả về { accessToken, user, ... } */
+export function refreshTokens() {
   if (!refreshing) {
     refreshing = (async () => {
-      const res = await fetch(`${BASE}/api/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken: tokens.refresh }),
-      });
+      const res = await fetch(`${BASE}/api/auth/refresh`, { method: 'POST', credentials: 'include' });
       const body = await readBody(res);
       if (!res.ok) {
         tokens.clear();
@@ -84,10 +85,11 @@ export async function api(path, { method = 'GET', body, query, headers = {}, aut
     method,
     headers: h,
     body: body !== undefined ? JSON.stringify(body) : undefined,
+    credentials: 'include',
   });
   const data = await readBody(res);
 
-  if (res.status === 401 && auth && !retried && data?.code === 'TOKEN_EXPIRED' && tokens.refresh) {
+  if (res.status === 401 && auth && !retried && data?.code === 'TOKEN_EXPIRED') {
     try {
       await refreshTokens();
     } catch (e) {

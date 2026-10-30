@@ -52,6 +52,7 @@ public class SecurityConfig {
 			// VNPay gọi tới, không có token; an toàn nhờ kiểm tra chữ ký HMAC
 			"/api/payments/vnpay/ipn",
 			"/api/payments/vnpay/return",
+			"/api/actuator/health",
 			"/swagger-ui.html",
 			"/swagger-ui/**",
 			"/v3/api-docs/**",

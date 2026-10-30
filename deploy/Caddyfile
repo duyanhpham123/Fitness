@@ -1,0 +1,17 @@
+# Caddy tự xin + gia hạn chứng chỉ HTTPS (Let's Encrypt) cho tên miền trong biến DOMAIN.
+# Yêu cầu: tên miền đã trỏ (bản ghi A) về IP của VPS, cổng 80 và 443 mở.
+{$DOMAIN} {
+	encode zstd gzip
+
+	header {
+		# Trình duyệt luôn dùng HTTPS cho tên miền này trong 1 năm
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	# web (nginx) phục vụ React và chuyển tiếp /api sang backend
+	reverse_proxy web:80
+}

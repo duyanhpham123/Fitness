@@ -287,7 +287,7 @@ public class AuthService {
 
 		String accessToken = jwtService.generateAccessToken(UserPrincipal.from(user));
 		AuthResponse response = new AuthResponse(accessToken, rawRefresh, TOKEN_TYPE,
-				jwtService.getAccessExpirationSeconds(), userMapper.toResponse(user));
+				jwtService.getAccessExpirationSeconds(), refreshExpiresAt, userMapper.toResponse(user));
 		return new IssuedTokens(response, entity);
 	}
 

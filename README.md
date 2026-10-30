@@ -32,8 +32,14 @@ Fitness/
 │           ├── auth/            # Đăng nhập, phân quyền theo vai trò
 │           ├── components/      # Layout, form, bảng, modal, soạn kế hoạch tập
 │           └── pages/           # auth/ admin/ member/ trainer/
-└── .github/workflows/ci.yml # Test backend, build frontend, build 2 Docker image
+├── deploy/                  # Production: compose.prod.yaml, Caddyfile, backup.sh, DEPLOY.md
+└── .github/workflows/ci.yml # Test backend (Testcontainers), build frontend, build 2 Docker image
 ```
+
+## Deploy lên VPS (chạy thật)
+
+Xem **[deploy/DEPLOY.md](deploy/DEPLOY.md)**: Docker Compose với Caddy (HTTPS tự động), cấu hình `prod`,
+tạo admin đầu tiên, sao lưu database hằng ngày. Bản production **không** có tài khoản / dữ liệu mẫu.
 
 ## Chạy dự án
 
@@ -148,7 +154,8 @@ Lỗi trả về cùng 1 format: `{ timestamp, status, code, message, path, erro
 
 ## Chạy test
 
-Test chạy trên MySQL (`fitness_db` đã nạp seed) và Redis thật; mỗi test tự rollback nên không để lại dữ liệu.
+Test dùng **Testcontainers**: tự bật MySQL + Redis tạm trong Docker (cần Docker Desktop đang chạy), Flyway dựng
+database từ đầu, nên không đụng tới `fitness_db` trên máy bạn.
 
 ```bash
 ./mvnw test

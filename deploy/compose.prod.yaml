@@ -1,0 +1,144 @@
+# =====================================================================
+#  Chạy production trên VPS (Linux + Docker). Hướng dẫn chi tiết: deploy/DEPLOY.md
+#
+#    cd deploy
+#    cp .env.example .env        # điền tên miền, mật khẩu, email...
+#    docker compose -f compose.prod.yaml up -d --build
+#
+#  Chỉ Caddy mở cổng 80/443 ra Internet; MySQL, Redis, backend, web chỉ nói chuyện trong mạng Docker.
+# =====================================================================
+
+# Log của mọi container: tối đa 5 file x 10MB, tự xoay vòng (không đầy ổ đĩa)
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  caddy:
+    image: caddy:2.8-alpine
+    depends_on:
+      - web
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?Chưa đặt DOMAIN trong .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Chứng chỉ HTTPS: mất volume này Caddy sẽ xin lại (Let's Encrypt giới hạn số lần / tuần)
+      - caddy-data:/data
+      - caddy-config:/config
+    restart: unless-stopped
+    logging: *logging
+
+  web:
+    build: ../fitness/font_end
+    image: fitness-frontend
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *logging
+
+  app:
+    build: ../fitness/back_end
+    image: fitness-backend
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      TZ: Asia/Ho_Chi_Minh
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/fitness_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      # User riêng của ứng dụng, chỉ có quyền trên database fitness_db (không dùng root)
+      SPRING_DATASOURCE_USERNAME: fitness
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?Chưa đặt DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Chưa đặt REDIS_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?Chưa đặt JWT_SECRET}
+      APP_FE_BASE_URL: https://${DOMAIN}
+      # Tạo ADMIN đầu tiên (chỉ khi chưa có admin nào); đăng nhập xong nên xóa 2 dòng này khỏi .env
+      APP_BOOTSTRAP_ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      APP_BOOTSTRAP_ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      # Email (bắt buộc: không có email thì khách không nhận được OTP để đăng ký / quên mật khẩu)
+      SPRING_MAIL_HOST: ${MAIL_HOST:?Chưa đặt MAIL_HOST}
+      SPRING_MAIL_PORT: ${MAIL_PORT:-587}
+      SPRING_MAIL_USERNAME: ${MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "true"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: "true"
+      MAIL_FROM: ${MAIL_FROM:?Chưa đặt MAIL_FROM}
+      # VNPay (để trống nếu chưa có hợp đồng; vẫn thu tiền mặt / chuyển khoản tại quầy được)
+      VNPAY_TMN_CODE: ${VNPAY_TMN_CODE:-}
+      VNPAY_HASH_SECRET: ${VNPAY_HASH_SECRET:-}
+      VNPAY_PAY_URL: ${VNPAY_PAY_URL:-https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
+      VNPAY_RETURN_URL: https://${DOMAIN}/api/payments/vnpay/return
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:8081/api/actuator/health | grep -q UP"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    restart: unless-stopped
+    logging: *logging
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Chưa đặt DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: fitness_db
+      MYSQL_USER: fitness
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Chưa đặt DB_PASSWORD}
+      TZ: UTC
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+    logging: *logging
+
+  redis:
+    image: redis:7.4-alpine
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Chưa đặt REDIS_PASSWORD}
+    command: ["sh", "-c", "exec redis-server --appendonly yes --requirepass \"$$REDIS_PASSWORD\""]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$REDIS_PASSWORD\" redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    logging: *logging
+
+  # Sao lưu database: 1 bản lúc khởi động + mỗi ngày lúc 02:00, giữ BACKUP_KEEP_DAYS ngày, lưu ở deploy/backups/
+  backup:
+    image: mysql:8.0
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      MYSQL_PWD: ${DB_ROOT_PASSWORD}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+      TZ: Asia/Ho_Chi_Minh
+    entrypoint: ["sh", "/backup.sh"]
+    volumes:
+      - ./backup.sh:/backup.sh:ro
+      - ./backups:/backups
+    restart: unless-stopped
+    logging: *logging
+
+volumes:
+  mysql-data:
+  redis-data:
+  caddy-data:
+  caddy-config:
