@@ -32,6 +32,7 @@ import com.duyanh.repository.BookingRepository;
 import com.duyanh.repository.ClassSessionRepository;
 import com.duyanh.repository.SubscriptionRepository;
 import com.duyanh.repository.UserRepository;
+import com.duyanh.security.UserPrincipal;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -180,6 +181,38 @@ public class BookingService {
 		return publish(response, true);
 	}
 
+	/**
+	 * Đánh dấu buổi tập đã diễn ra: COMPLETED (có đến tập) hoặc NO_SHOW (vắng mặt).
+	 * HLV chỉ đánh dấu buổi của mình (PT với mình hoặc lớp mình dạy); STAFF / ADMIN đánh dấu mọi buổi.
+	 * Buổi PT vắng mặt không được hoàn lại buổi PT.
+	 */
+	@Auditable(action = AuditActions.BOOKING_ATTENDANCE, entityType = "BOOKING", entityId = "#bookingId",
+			details = "{'status': #status}")
+	@Transactional
+	public BookingResponse markAttendance(Long bookingId, BookingStatus status, UserPrincipal actor) {
+		if (status != BookingStatus.COMPLETED && status != BookingStatus.NO_SHOW) {
+			throw ApiException.badRequest("INVALID_STATUS", "Chỉ được đánh dấu COMPLETED hoặc NO_SHOW");
+		}
+		Booking booking = bookingRepository.findWithDetailsById(bookingId)
+				.orElseThrow(() -> ApiException.notFound("BOOKING_NOT_FOUND", "Không tìm thấy lịch đặt"));
+
+		boolean isStaff = actor.getRoles().contains("STAFF") || actor.getRoles().contains("ADMIN");
+		Long trainerId = booking.getType() == BookingType.PT
+				? booking.getTrainer().getId()
+				: booking.getClassSession().getTrainer().getId();
+		if (!isStaff && !trainerId.equals(actor.getId())) {
+			throw ApiException.notFound("BOOKING_NOT_FOUND", "Không tìm thấy lịch đặt");
+		}
+		if (booking.getStatus() != BookingStatus.CONFIRMED) {
+			throw ApiException.conflict("BOOKING_NOT_MARKABLE", "Chỉ đánh dấu được lịch đang CONFIRMED");
+		}
+		if (booking.getStartAt().isAfter(LocalDateTime.now())) {
+			throw ApiException.badRequest("SESSION_NOT_STARTED", "Buổi tập chưa bắt đầu");
+		}
+		booking.setStatus(status);
+		return mapper.toResponse(booking);
+	}
+
 	@Transactional(readOnly = true)
 	public PageResponse<BookingResponse> listMine(Long memberId, int page, int size) {
 		var pageable = PageRequest.of(Math.max(page, 0), Math.clamp(size, 1, MAX_PAGE_SIZE));
@@ -204,7 +237,7 @@ public class BookingService {
 		String target = b.type() == BookingType.PT
 				? "buổi PT với HLV " + b.trainerName()
 				: "lớp " + b.className();
-		eventPublisher.publishEvent(new BookingChangedEvent(b.id(), b.memberId(), target, b.startAt(), cancelled));
+		eventPublisher.publishEvent(new BookingChangedEvent(b.id(), b.memberId(), target, b.startAt(), cancelled, null));
 		return b;
 	}
 

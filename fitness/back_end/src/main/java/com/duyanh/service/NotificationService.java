@@ -17,12 +17,16 @@ import com.duyanh.dto.common.PageResponse;
 import com.duyanh.dto.notification.BroadcastRequest;
 import com.duyanh.dto.notification.CountResponse;
 import com.duyanh.dto.notification.NotificationResponse;
+import com.duyanh.entity.Booking;
 import com.duyanh.entity.Notification;
 import com.duyanh.entity.Subscription;
 import com.duyanh.entity.User;
+import com.duyanh.entity.enums.BookingStatus;
+import com.duyanh.entity.enums.BookingType;
 import com.duyanh.entity.enums.NotificationType;
 import com.duyanh.exception.ApiException;
 import com.duyanh.mapper.NotificationMapper;
+import com.duyanh.repository.BookingRepository;
 import com.duyanh.repository.NotificationRepository;
 import com.duyanh.repository.SubscriptionRepository;
 import com.duyanh.repository.UserRepository;
@@ -37,8 +41,10 @@ public class NotificationService {
 
 	private static final int MAX_PAGE_SIZE = 100;
 	private static final String REF_SUBSCRIPTION_EXPIRING = "SUBSCRIPTION_EXPIRING";
+	private static final String REF_BOOKING_REMINDER = "BOOKING_REMINDER";
 
 	private final NotificationRepository notificationRepository;
+	private final BookingRepository bookingRepository;
 	private final UserRepository userRepository;
 	private final SubscriptionRepository subscriptionRepository;
 	private final EmailService emailService;
@@ -71,7 +77,7 @@ public class NotificationService {
 	@Transactional(readOnly = true)
 	public PageResponse<NotificationResponse> listMine(Long userId, int page, int size) {
 		var pageable = PageRequest.of(Math.max(page, 0), Math.clamp(size, 1, MAX_PAGE_SIZE));
-		return PageResponse.of(notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable),
+		return PageResponse.of(notificationRepository.findByUserIdOrderByCreatedAtDescIdDesc(userId, pageable),
 				mapper::toResponse);
 	}
 
@@ -133,6 +139,34 @@ public class NotificationService {
 							sub.getMembershipPackage().getName(),
 							endDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))),
 					REF_SUBSCRIPTION_EXPIRING, sub.getId(), true);
+			created++;
+		}
+		return created;
+	}
+
+	/**
+	 * Nhắc hội viên các lịch tập (PT / lớp) đang CONFIRMED trong ngày cho trước. Chạy lại không gửi trùng.
+	 *
+	 * @return số thông báo đã tạo
+	 */
+	@Transactional
+	public int remindBookings(LocalDate day) {
+		LocalDateTime start = day.atStartOfDay();
+		int created = 0;
+		for (Booking b : bookingRepository.findByStartAtBetweenAndStatusInOrderByStartAtAsc(start,
+				start.plusDays(1).minusNanos(1), List.of(BookingStatus.CONFIRMED))) {
+			Long memberId = b.getMember().getId();
+			if (notificationRepository.existsByUserIdAndReferenceTypeAndReferenceId(memberId, REF_BOOKING_REMINDER,
+					b.getId())) {
+				continue;
+			}
+			String target = b.getType() == BookingType.PT
+					? "buổi PT với HLV " + b.getTrainer().getUser().getFullName()
+					: "lớp " + b.getClassSession().getFitnessClass().getName();
+			notify(memberId, NotificationType.BOOKING, "Nhắc lịch tập",
+					"Bạn có %s lúc %s. Nếu không đến được, hãy hủy trước ít nhất 2 giờ.".formatted(target,
+							b.getStartAt().format(DateTimeFormatter.ofPattern("HH:mm 'ngày' dd/MM/yyyy"))),
+					REF_BOOKING_REMINDER, b.getId(), true);
 			created++;
 		}
 		return created;

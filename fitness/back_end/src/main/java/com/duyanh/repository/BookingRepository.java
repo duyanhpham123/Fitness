@@ -25,6 +25,14 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 	@EntityGraph(attributePaths = { "member", "trainer", "trainer.user", "classSession", "classSession.fitnessClass" })
 	Optional<Booking> findByIdAndMemberId(Long id, Long memberId);
 
+	@EntityGraph(attributePaths = { "member", "trainer", "trainer.user", "classSession", "classSession.fitnessClass",
+			"classSession.trainer" })
+	Optional<Booking> findWithDetailsById(Long id);
+
+	// Lịch đang hiệu lực của 1 buổi lớp (để hủy hàng loạt khi buổi lớp bị hủy)
+	@EntityGraph(attributePaths = { "member", "classSession", "classSession.fitnessClass" })
+	List<Booking> findByClassSessionIdAndStatusIn(Long classSessionId, List<BookingStatus> statuses);
+
 	@EntityGraph(attributePaths = { "member", "trainer", "trainer.user" })
 	List<Booking> findByTrainerIdAndStartAtBetweenOrderByStartAtAsc(Long trainerId, LocalDateTime from,
 			LocalDateTime to);

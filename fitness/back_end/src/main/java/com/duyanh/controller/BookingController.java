@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.duyanh.dto.booking.AttendanceRequest;
 import com.duyanh.dto.booking.BookingResponse;
 import com.duyanh.dto.booking.ClassBookingRequest;
 import com.duyanh.dto.booking.PtBookingRequest;
@@ -65,6 +67,15 @@ public class BookingController {
 	public BookingResponse cancel(@AuthenticationPrincipal UserPrincipal principal, @PathVariable Long id,
 			@RequestParam(required = false) String reason) {
 		return bookingService.cancel(principal.getId(), id, reason);
+	}
+
+	@Operation(summary = "Đánh dấu đã tập (COMPLETED) / vắng mặt (NO_SHOW) sau khi buổi tập bắt đầu "
+			+ "(HLV cho buổi của mình; STAFF, ADMIN cho mọi buổi)")
+	@PreAuthorize("hasAnyRole('TRAINER', 'STAFF', 'ADMIN')")
+	@PutMapping("/{id}/attendance")
+	public BookingResponse markAttendance(@PathVariable Long id, @Valid @RequestBody AttendanceRequest req,
+			@AuthenticationPrincipal UserPrincipal principal) {
+		return bookingService.markAttendance(id, req.status(), principal);
 	}
 
 	@Operation(summary = "Lịch sử đặt lịch của tôi")

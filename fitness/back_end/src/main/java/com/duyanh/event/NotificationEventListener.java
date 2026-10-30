@@ -32,9 +32,11 @@ public class NotificationEventListener {
 	@EventListener
 	public void onBookingChanged(BookingChangedEvent e) {
 		if (e.cancelled()) {
+			String reason = e.reason() == null ? "" : " Lý do: " + e.reason();
+			// Phòng tập chủ động hủy (có lý do) thì gửi thêm email để hội viên không đến nhầm
 			notificationService.notify(e.memberId(), NotificationType.BOOKING, "Đã hủy lịch tập",
-					"Lịch %s lúc %s đã được hủy.".formatted(e.target(), e.startAt().format(TIME)),
-					"BOOKING", e.bookingId(), false);
+					"Lịch %s lúc %s đã được hủy.%s".formatted(e.target(), e.startAt().format(TIME), reason),
+					"BOOKING", e.bookingId(), e.reason() != null);
 		} else {
 			notificationService.notify(e.memberId(), NotificationType.BOOKING, "Đặt lịch thành công",
 					"Bạn đã đặt %s lúc %s.".formatted(e.target(), e.startAt().format(TIME)),

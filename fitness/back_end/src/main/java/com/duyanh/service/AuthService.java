@@ -7,6 +7,7 @@ import java.util.Base64;
 import java.util.Locale;
 
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -37,6 +38,7 @@ import com.duyanh.repository.UserRepository;
 import com.duyanh.security.HashUtils;
 import com.duyanh.security.JwtProperties;
 import com.duyanh.security.JwtService;
+import com.duyanh.security.LoginAttemptService;
 import com.duyanh.security.TokenBlacklistService;
 import com.duyanh.security.UserPrincipal;
 
@@ -74,6 +76,7 @@ public class AuthService {
 	private final OtpProperties otpProperties;
 	private final EmailService emailService;
 	private final AuditService auditService;
+	private final LoginAttemptService loginAttemptService;
 	private final UserMapper userMapper;
 
 	/**
@@ -176,6 +179,8 @@ public class AuthService {
 
 		refreshTokenRepository.revokeAllByUserId(user.getId(), LocalDateTime.now());
 		auditService.record(user.getId(), AuditActions.PASSWORD_RESET, "USER", user.getId(), null);
+		// Đặt lại mật khẩu thành công thì mở khóa đăng nhập (nếu đang bị khóa do nhập sai)
+		loginAttemptService.reset(email);
 		blacklistService.revokeAllForUser(user.getId());
 		log.info("Password reset for user id={}", user.getId());
 	}
@@ -184,10 +189,20 @@ public class AuthService {
 			actorId = "#result.user().id()", details = "{'rememberMe': #req.rememberMe()}")
 	@Transactional
 	public AuthResponse login(LoginRequest req, ClientInfo client) {
+		String email = normalizeEmail(req.email());
+		loginAttemptService.checkNotLocked(email);
+
 		// Sai mật khẩu -> BadCredentialsException, bị khóa -> LockedException,
 		// chưa xác thực email -> DisabledException (GlobalExceptionHandler xử lý)
-		Authentication auth = authenticationManager.authenticate(
-				UsernamePasswordAuthenticationToken.unauthenticated(normalizeEmail(req.email()), req.password()));
+		Authentication auth;
+		try {
+			auth = authenticationManager.authenticate(
+					UsernamePasswordAuthenticationToken.unauthenticated(email, req.password()));
+		} catch (BadCredentialsException e) {
+			loginAttemptService.recordFailure(email);
+			throw e;
+		}
+		loginAttemptService.reset(email);
 		UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
 
 		User user = userRepository.findById(principal.getId()).orElseThrow();

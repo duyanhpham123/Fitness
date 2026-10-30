@@ -170,7 +170,7 @@ public class PaymentService {
 	@Transactional(readOnly = true)
 	public PageResponse<PaymentResponse> listMine(Long userId, int page, int size) {
 		var pageable = PageRequest.of(Math.max(page, 0), Math.clamp(size, 1, MAX_PAGE_SIZE));
-		return PageResponse.of(paymentRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable), mapper::toResponse);
+		return PageResponse.of(paymentRepository.findByUserIdOrderByCreatedAtDescIdDesc(userId, pageable), mapper::toResponse);
 	}
 
 	/**

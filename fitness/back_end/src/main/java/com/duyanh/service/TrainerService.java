@@ -14,6 +14,7 @@ import com.duyanh.audit.AuditActions;
 import com.duyanh.audit.Auditable;
 import com.duyanh.dto.trainer.ScheduleItem;
 import com.duyanh.dto.trainer.SlotResponse;
+import com.duyanh.dto.trainer.TrainerProfileRequest;
 import com.duyanh.dto.trainer.TrainerDetailResponse;
 import com.duyanh.dto.trainer.TrainerResponse;
 import com.duyanh.entity.TrainerProfile;
@@ -47,6 +48,18 @@ public class TrainerService {
 	public TrainerDetailResponse get(Long trainerId) {
 		TrainerProfile trainer = requireActive(trainerId);
 		return new TrainerDetailResponse(mapper.toResponse(trainer), scheduleOf(trainerId));
+	}
+
+	@Auditable(action = AuditActions.TRAINER_PROFILE_UPDATE, entityType = "TRAINER", entityId = "#trainerId")
+	@Transactional
+	public TrainerResponse updateProfile(Long trainerId, TrainerProfileRequest req) {
+		TrainerProfile trainer = trainerRepository.findById(trainerId)
+				.orElseThrow(() -> ApiException.notFound("TRAINER_NOT_FOUND", "Không tìm thấy hồ sơ huấn luyện viên"));
+		trainer.setSpecialization(blankToNull(req.specialization()));
+		trainer.setBio(blankToNull(req.bio()));
+		trainer.setExperienceYears(req.experienceYears());
+		trainer.setCertifications(blankToNull(req.certifications()));
+		return mapper.toResponse(trainer);
 	}
 
 	/**
@@ -147,5 +160,9 @@ public class TrainerService {
 			}
 			prev = item;
 		}
+	}
+
+	private static String blankToNull(String s) {
+		return s == null || s.isBlank() ? null : s.trim();
 	}
 }

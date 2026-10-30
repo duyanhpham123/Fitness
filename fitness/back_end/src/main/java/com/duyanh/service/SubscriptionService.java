@@ -145,7 +145,7 @@ public class SubscriptionService {
 
 	@Transactional(readOnly = true)
 	public List<SubscriptionResponse> listMine(Long userId) {
-		return subscriptionRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+		return subscriptionRepository.findByUserIdOrderByCreatedAtDescIdDesc(userId).stream()
 				.map(mapper::toResponse)
 				.toList();
 	}

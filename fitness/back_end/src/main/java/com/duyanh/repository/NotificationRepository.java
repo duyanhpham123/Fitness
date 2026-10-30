@@ -13,7 +13,7 @@ import com.duyanh.entity.Notification;
 
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
 
-	Page<Notification> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
+	Page<Notification> findByUserIdOrderByCreatedAtDescIdDesc(Long userId, Pageable pageable);
 
 	long countByUserIdAndReadFalse(Long userId);
 

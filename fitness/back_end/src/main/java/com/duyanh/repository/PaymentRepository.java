@@ -36,7 +36,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 	// Client gửi lại request với cùng Idempotency-Key -> trả lại payment cũ
 	Optional<Payment> findByUserIdAndIdempotencyKey(Long userId, String idempotencyKey);
 
-	Page<Payment> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
+	Page<Payment> findByUserIdOrderByCreatedAtDescIdDesc(Long userId, Pageable pageable);
 
 	@Modifying(flushAutomatically = true, clearAutomatically = true)
 	@Query("""

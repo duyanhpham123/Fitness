@@ -128,14 +128,14 @@ public class WorkoutService {
 
 	@Transactional(readOnly = true)
 	public List<WorkoutPlanResponse> listMine(Long memberId) {
-		return planRepository.findByMemberIdAndStatusInOrderByCreatedAtDesc(memberId, VISIBLE_STATUSES).stream()
+		return planRepository.findByMemberIdAndStatusInOrderByCreatedAtDescIdDesc(memberId, VISIBLE_STATUSES).stream()
 				.map(mapper::toResponse)
 				.toList();
 	}
 
 	@Transactional(readOnly = true)
 	public List<WorkoutPlanResponse> listCreatedByTrainer(Long trainerId) {
-		return planRepository.findByTrainerIdOrderByCreatedAtDesc(trainerId).stream().map(mapper::toResponse).toList();
+		return planRepository.findByTrainerIdOrderByCreatedAtDescIdDesc(trainerId).stream().map(mapper::toResponse).toList();
 	}
 
 	@Transactional(readOnly = true)

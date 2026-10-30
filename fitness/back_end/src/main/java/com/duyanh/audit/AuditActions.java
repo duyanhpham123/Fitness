@@ -32,6 +32,11 @@ public final class AuditActions {
 	public static final String EXERCISE_CREATE = "EXERCISE_CREATE";
 	public static final String WORKOUT_PLAN_CREATE = "WORKOUT_PLAN_CREATE";
 	public static final String WORKOUT_PLAN_UPDATE = "WORKOUT_PLAN_UPDATE";
+	public static final String PROFILE_UPDATE = "PROFILE_UPDATE";
+	public static final String PASSWORD_CHANGE = "PASSWORD_CHANGE";
+	public static final String BOOKING_ATTENDANCE = "BOOKING_ATTENDANCE";
+	public static final String CLASS_SESSION_CANCEL = "CLASS_SESSION_CANCEL";
+	public static final String TRAINER_PROFILE_UPDATE = "TRAINER_PROFILE_UPDATE";
 
 	private AuditActions() {
 	}

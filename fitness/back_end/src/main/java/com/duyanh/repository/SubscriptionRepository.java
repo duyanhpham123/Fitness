@@ -19,7 +19,7 @@ import com.duyanh.entity.enums.SubscriptionStatus;
 public interface SubscriptionRepository extends JpaRepository<Subscription, Long> {
 
 	@EntityGraph(attributePaths = "membershipPackage")
-	List<Subscription> findByUserIdOrderByCreatedAtDesc(Long userId);
+	List<Subscription> findByUserIdOrderByCreatedAtDescIdDesc(Long userId);
 
 	@EntityGraph(attributePaths = "membershipPackage")
 	Optional<Subscription> findByIdAndUserId(Long id, Long userId);

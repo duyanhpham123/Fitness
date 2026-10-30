@@ -82,17 +82,17 @@ Dùng trên Swagger: gọi `POST /api/auth/login` → copy `accessToken` → b�
 
 | Module | Đường dẫn chính | Ghi chú |
 |---|---|---|
-| Authentication | `/api/auth/*` | Đăng ký (xác thực email bằng OTP), đăng nhập, refresh token xoay vòng, quên / đặt lại mật khẩu |
+| Authentication | `/api/auth/*` | Đăng ký (xác thực email bằng OTP), đăng nhập (sai 5 lần khóa 15 phút), refresh token xoay vòng, quên / đặt lại mật khẩu |
 | OTP | `/api/otp/send` | Mã 6 số trên Redis, TTL 5 phút, giới hạn gửi lại và số lần nhập sai |
-| User | `/api/users/me` | |
+| User | `/api/users/me` | Xem / sửa hồ sơ, đổi mật khẩu (đăng xuất mọi thiết bị) |
 | Membership | `/api/packages`, `/api/subscriptions` | Mua / gia hạn nối tiếp, bảo lưu |
 | Payment | `/api/payments` | VNPay (IPN + return), tiền mặt tại quầy, lịch sử giao dịch |
-| Trainer | `/api/trainers` | Lịch làm việc hàng tuần, slot PT còn trống |
-| Class | `/api/classes`, `/api/class-sessions` | Lớp nhóm, buổi học có sức chứa |
-| Booking | `/api/bookings` | Đặt PT / đặt lớp, hủy lịch trước 2 giờ |
+| Trainer | `/api/trainers` | Hồ sơ HLV, lịch làm việc hàng tuần, slot PT còn trống |
+| Class | `/api/classes`, `/api/class-sessions` | Lớp nhóm, buổi học có sức chứa, hủy buổi học (báo cho hội viên) |
+| Booking | `/api/bookings` | Đặt PT / đặt lớp, hủy lịch trước 2 giờ, HLV / lễ tân đánh dấu đã tập / vắng mặt |
 | Check-in | `/api/check-ins` | QR dùng 1 lần (60 giây), check-in thủ công, check-out |
 | Workout | `/api/exercises`, `/api/workout-plans`, `/api/body-metrics/me` | Kế hoạch tập, hoàn thành ngày tập, BMI |
-| Notification | `/api/notifications` | Thông báo trong app, email sau khi commit, broadcast |
+| Notification | `/api/notifications` | Thông báo trong app, email sau khi commit, nhắc lịch tập 20:00 tối hôm trước, broadcast |
 | Admin | `/api/admin/*` | Tạo / khóa tài khoản, phân quyền, danh sách hội viên |
 | Report | `/api/reports/*` | Tổng quan, doanh thu theo ngày, gói bán chạy, tỷ lệ đi tập |
 | Audit Log | `/api/audit-logs` | Nhật ký thao tác (ADMIN) |

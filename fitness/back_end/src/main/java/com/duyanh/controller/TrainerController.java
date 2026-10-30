@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.duyanh.dto.trainer.ScheduleItem;
 import com.duyanh.dto.trainer.ScheduleRequest;
 import com.duyanh.dto.trainer.SlotResponse;
+import com.duyanh.dto.trainer.TrainerProfileRequest;
 import com.duyanh.dto.trainer.TrainerDetailResponse;
 import com.duyanh.dto.trainer.TrainerResponse;
 import com.duyanh.security.UserPrincipal;
@@ -52,6 +53,14 @@ public class TrainerController {
 	public List<SlotResponse> slots(@PathVariable Long id,
 			@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
 		return trainerService.availableSlots(id, date);
+	}
+
+	@Operation(summary = "HLV tự sửa hồ sơ (chuyên môn, giới thiệu, kinh nghiệm, chứng chỉ)")
+	@PreAuthorize("hasRole('TRAINER')")
+	@PutMapping("/me")
+	public TrainerResponse updateMyProfile(@AuthenticationPrincipal UserPrincipal principal,
+			@Valid @RequestBody TrainerProfileRequest req) {
+		return trainerService.updateProfile(principal.getId(), req);
 	}
 
 	@Operation(summary = "HLV cập nhật lịch làm việc hàng tuần (thay toàn bộ)")

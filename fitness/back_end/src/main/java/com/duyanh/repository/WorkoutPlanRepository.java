@@ -13,7 +13,7 @@ import com.duyanh.entity.enums.WorkoutPlanStatus;
  */
 public interface WorkoutPlanRepository extends JpaRepository<WorkoutPlan, Long> {
 
-	List<WorkoutPlan> findByMemberIdAndStatusInOrderByCreatedAtDesc(Long memberId, List<WorkoutPlanStatus> statuses);
+	List<WorkoutPlan> findByMemberIdAndStatusInOrderByCreatedAtDescIdDesc(Long memberId, List<WorkoutPlanStatus> statuses);
 
-	List<WorkoutPlan> findByTrainerIdOrderByCreatedAtDesc(Long trainerId);
+	List<WorkoutPlan> findByTrainerIdOrderByCreatedAtDescIdDesc(Long trainerId);
 }
